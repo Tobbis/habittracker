@@ -1,5 +1,6 @@
-import React, { useState, useContext } from "react";
-import { StyleSheet, View, TextInput, Text, TouchableOpacity, Image } from "react-native";
+import React, { useState, useContext, useEffect } from "react";
+import { StyleSheet, View, TextInput, Text, TouchableOpacity, Image, ActivityIndicator } from "react-native";
+import * as SecureStore from 'expo-secure-store';
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { initializeApp } from "firebase/app";
@@ -24,6 +25,12 @@ const LoginScreen = ({ navigation }) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       setUserId(userCredential.user.uid);
+      try {
+        await SecureStore.setItemAsync('email', email);
+        await SecureStore.setItemAsync('password', password);
+      } catch (e) {
+        console.log('SecureStore save failed', e.message);
+      }
       navigation.navigate("Habit");
     } catch (err) {
       setError(err.message);
@@ -64,11 +71,43 @@ const Stack = createStackNavigator();
 
 export default function App() {
   const [userId, setUserId] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const tryAutoLogin = async () => {
+      try {
+        const email = await SecureStore.getItemAsync('email');
+        const password = await SecureStore.getItemAsync('password');
+        if (email && password) {
+          try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            if (mounted) setUserId(userCredential.user.uid);
+          } catch (err) {
+            console.log('Auto-login failed:', err.message);
+          }
+        }
+      } catch (err) {
+        console.log('SecureStore read failed:', err.message);
+      }
+      if (mounted) setCheckingAuth(false);
+    };
+    tryAutoLogin();
+    return () => { mounted = false };
+  }, []);
+
+  if (checkingAuth) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <UserContext.Provider value={{ userId, setUserId }}>
       <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName={userId ? "Habit" : "Login"}>
           <Stack.Screen 
             name="Login" 
             component={LoginScreen} 

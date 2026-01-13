@@ -4,6 +4,7 @@ import { View, TextInput, Button, StyleSheet, Text, TouchableOpacity } from "rea
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import UserContext from "../utils/UserContext";
+import * as SecureStore from 'expo-secure-store';
 
 export default function SignupScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -19,6 +20,12 @@ export default function SignupScreen({ navigation }) {
       const db = getFirestore();
       await setDoc(doc(db, 'users', uid), { habits: [] });
       setUserId(uid);
+      try {
+        await SecureStore.setItemAsync('email', email);
+        await SecureStore.setItemAsync('password', password);
+      } catch (e) {
+        console.log('SecureStore save failed', e.message);
+      }
       navigation.navigate("Habit");
     } catch (err) {
       setError(err.message);
