@@ -2,6 +2,7 @@
 import React, { useState, useContext } from "react";
 import { View, TextInput, Button, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import UserContext from "../utils/UserContext";
 
 export default function SignupScreen({ navigation }) {
@@ -14,7 +15,10 @@ export default function SignupScreen({ navigation }) {
   const handleSignup = async () => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      setUserId(userCredential.user.uid);
+      const uid = userCredential.user.uid;
+      const db = getFirestore();
+      await setDoc(doc(db, 'users', uid), { habits: [] });
+      setUserId(uid);
       navigation.navigate("Habit");
     } catch (err) {
       setError(err.message);

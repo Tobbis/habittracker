@@ -6,6 +6,8 @@ import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { firebaseConfig } from "./config/firebaseConfig";
 import HabitScreen from "./screens/HabitScreen";
+import CreateHabit from "./screens/CreateHabit";
+import ViewHabitScreen from "./screens/ViewHabitScreen";
 import SignupScreen from "./screens/SignupScreen";
 import UserContext from "./utils/UserContext"; // Import UserContext
 
@@ -81,6 +83,16 @@ export default function App() {
             name="Habit" 
             component={HabitScreen} 
             options={{ headerShown: false }} // Hide header for Habit screen
+          />
+          <Stack.Screen 
+            name="CreateHabit"
+            component={CreateHabit}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ViewHabit"
+            component={ViewHabitScreen}
+            options={{ headerShown: false }}
           />
         </Stack.Navigator>
       </NavigationContainer>

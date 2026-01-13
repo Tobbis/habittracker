@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Modal, TextInput, ActivityIndicator } from 'react-native';
-import { getAuth } from 'firebase/auth';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Modal, TextInput, ActivityIndicator, Image } from 'react-native';
 import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, increment } from 'firebase/firestore';
 import UserContext from '../utils/UserContext';
 
-export default function HabitScreen() {
+export default function HabitScreen({ navigation }) {
   const { userId } = useContext(UserContext);
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,19 +13,20 @@ export default function HabitScreen() {
   const [notes, setNotes] = useState('');
   const [clickedHabitId, setClickedHabitId] = useState(null); // State to track clicked habit
   const db = getFirestore();
-  const auth = getAuth();
 
   useEffect(() => {
-    fetchHabits();
-  }, []);
+    if (userId) fetchHabits();
+  }, [userId]);
+
+  
 
   const fetchHabits = async () => {
+    if (!userId) return;
     setLoading(true);
     try {
       const querySnapshot = await getDocs(collection(db, 'users', userId, 'habits'));
       const habitsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setHabits(habitsData);
-      //console.log('Habits: ', habitsData); // Log fetched habits
     } catch (error) {
       console.error('Error fetching habits: ', error);
     }
@@ -92,16 +92,32 @@ export default function HabitScreen() {
   }
 
   const renderItem = ({ item }) => {
-    const lastPerformedDate = new Date(item.lastPerformed);
-    const isPerformedToday = isToday(lastPerformedDate);
+    const lastPerformedDate = item.lastPerformed ? new Date(item.lastPerformed) : null;
+    const isPerformedToday = lastPerformedDate ? isToday(lastPerformedDate) : false;
+    const daysAgo = lastPerformedDate ? Math.floor((Date.now() - lastPerformedDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
     return (
-      <TouchableOpacity onPress={() => performHabit(item.id, item.lastPerformed)} style={[styles.card, isPerformedToday && styles.clickedCard]}>
-        <View style={styles.cardContent}>
-          <Text style={styles.habitName}>{item.name}</Text>
-          <Text style={styles.habitStreak}>Streak: {item.streak}</Text>
-        </View>
-      </TouchableOpacity>
+      <View style={[styles.card, isPerformedToday && styles.clickedCard]}>
+        <TouchableOpacity
+          style={styles.cardContentTouchable}
+          onPress={() => navigation.navigate('ViewHabit', { habitId: item.id })}
+        >
+          <View style={styles.cardRow}>
+            <View style={styles.cardText}>
+              <Text style={styles.habitName}>{item.name}</Text>
+              <Text style={styles.habitSub}>{isPerformedToday ? 'Done today' : (daysAgo === 0 ? 'Today' : (daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`))}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.doneButton, isPerformedToday && styles.doneButtonDisabled]}
+              onPress={() => performHabit(item.id, item.lastPerformed)}
+              disabled={isPerformedToday}
+            >
+              <Image source={require('../assets/ht_loggo_tiny.png')} style={styles.doneImage} />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -113,7 +129,7 @@ export default function HabitScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
       />
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('CreateHabit')}>
         <Text style={{ color: '#fff', fontSize: 30 }}>+</Text>
       </TouchableOpacity>
 
@@ -166,27 +182,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingBottom: 80,
   },
-  card: {
-    flex: 1,
-    margin: 10,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-  },
   clickedCard: {
-    backgroundColor: 'lightgreen', // Change background color when clicked
+    borderColor: '#bde4ff',
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardText: {
+    flex: 1,
+    marginRight: 12,
   },
   cardContent: {
-    padding: 20,
-    alignItems: 'center',
+    padding: 12,
+    alignItems: 'flex-start',
   },
   habitName: {
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'left',
+    marginLeft: 4,
+  },
+  habitSub: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+    marginLeft: 4,
   },
   habitStreak: {
     fontSize: 16,
@@ -204,6 +226,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
+  },
+  card: {
+    margin: 10,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
+    padding: 6,
+    elevation: 1,
+  },
+  cardContentTouchable: {
+    flex: 1,
+  },
+  doneButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  doneButtonDisabled: {
+    opacity: 0.5,
+  },
+  doneImage: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
   },
   modalContainer: {
     flex: 1,
